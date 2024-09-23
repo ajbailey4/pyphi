@@ -208,7 +208,10 @@ def integration_value(
     # TODO(4.0) deal with proliferation of special cases for GID
     if repertoire_distance == "GENERALIZED_INTRINSIC_DIFFERENCE":
         partitioned_repertoire = cut_subsystem.forward_repertoire(
-            direction, subsystem.node_indices, subsystem.node_indices
+            direction,
+            subsystem.node_indices,
+            subsystem.node_indices,
+            system_state[direction].state,
         ).squeeze()[system_state[direction].state]
     else:
         partitioned_repertoire = cut_subsystem.repertoire(
