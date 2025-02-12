@@ -8,6 +8,8 @@ from itertools import cycle
 from textwrap import indent
 from typing import Any, Callable, Iterable, List, Optional, TYPE_CHECKING
 
+import time
+
 if TYPE_CHECKING:
     from ray import ObjectRef
 
@@ -143,6 +145,7 @@ def backpressure(func, *argslist, inflight_limit=1000, **kwargs):
         if len(result_refs) > inflight_limit:
             num_ready = i - inflight_limit
             ray.wait(result_refs, num_returns=num_ready)
+            print("waiting...")
         result_refs.append(func.remote(*args, **kwargs))
     return result_refs
 
@@ -188,6 +191,19 @@ def _map_reduce_tree(
     """
     total = fallback(try_len(*iterables), float("inf"))
     branch = _level < tree.depth and constraints.sequential_threshold < total
+    print(
+        "total = "
+        + str(total)
+        + ", seq. thres. = "
+        + str(constraints.sequential_threshold)
+        + ", _level = "
+        + str(_level)
+        + ", tree.depth = "
+        + str(tree.depth)
+        + ", branch = "
+        + str(branch)
+    )
+
     if branch:
         chunksize = max(chunksize, constraints.sequential_threshold)
         chunked_iterables = zip(
@@ -227,6 +243,7 @@ def _map_reduce_tree(
         wait_then_finish.remote(progress_bar, results)
         progress_bar.print_until_done()
     # Get (potentially remote) results.
+    get_start = time.time()
     results = get(
         results,
         remote=branch,
@@ -238,7 +255,9 @@ def _map_reduce_tree(
     if progress_bar and _level > 1:
         # We're on a child node: update the progress bar.
         results = throttled_update(progress_bar, results)
-    return _reduce(results, reduce_func, reduce_kwargs, branch)
+    ret = _reduce(results, reduce_func, reduce_kwargs, branch)
+    print("total_time = " + str(time.time() - get_start))
+    return ret
 
 
 _remote_map_reduce_tree = ray.remote(_map_reduce_tree)
@@ -324,6 +343,7 @@ class MapReduce:
             )
             # Get the tree specifications
             self.tree = self.constraints.simulate()
+            print(self.tree)
             # Get the chunksize
             self.chunksize = self.constraints.get_initial_chunksize()
             # Default to cancelling all remote tasks
@@ -368,6 +388,7 @@ class MapReduce:
     def _run_parallel(self):
         """Perform the computation in parallel."""
         # Ensure ray is initialized with args from config
+        init_start = time.time()
         init()
         if self.progress:
             # Set up remote progress bar actor
@@ -377,24 +398,38 @@ class MapReduce:
             self.shortcircuit_callback = progress_hook(self.progress_bar)(
                 self.shortcircuit_callback
             )
+        print("init time = " + str(time.time() - init_start))
         try:
-            self.result = _map_reduce_tree(
-                self.iterables,
-                self.map_func,
-                self.reduce_func,
-                self.constraints,
-                self.tree,
-                self.chunksize,
-                self.shortcircuit_func,
-                self.shortcircuit_callback,
-                self.shortcircuit_callback_args,
-                self.ordered,
-                self.inflight_limit,
-                self.map_kwargs,
-                self.reduce_kwargs,
-                self.progress_bar,
-            )
+            calc_start = time.time()
+            if True:
+                self.result = _map_reduce_tree(
+                    self.iterables,
+                    self.map_func,
+                    self.reduce_func,
+                    self.constraints,
+                    self.tree,
+                    self.chunksize,
+                    self.shortcircuit_func,
+                    self.shortcircuit_callback,
+                    self.shortcircuit_callback_args,
+                    self.ordered,
+                    self.inflight_limit,
+                    self.map_kwargs,
+                    self.reduce_kwargs,
+                    self.progress_bar,
+                )
+            else:
+                self.result = _map_reduce(
+                    self.iterables,
+                    self.map_func,
+                    self.reduce_func,
+                    self.constraints,
+                    self.chunksize,
+                    self.map_kwargs,
+                    self.reduce_kwargs,
+                )
             self.done = True
+            print("calc time = " + str(time.time() - calc_start))
             return self.result
         except Exception as e:
             self.error = e
@@ -433,5 +468,57 @@ class MapReduce:
         if self.done:
             return self.result
         if self.parallel and self.tree.depth > 1:
-            return self._run_parallel()
+            start = time.time()
+            ret = self._run_parallel()
+            print("calc time = " + str(time.time() - start))
+            return ret
         return self._run_sequential()
+
+
+@ray.remote
+def seq(func, *arglists, **kwargs):
+    seq_map_start = time.time()
+
+    ret = []
+    for args in zip(*arglists):
+        ret.append(func(*args, **kwargs))
+
+    print("seq map time = " + str(time.time() - seq_map_start))
+    return ret
+
+
+def _map_reduce(
+    iterables,
+    map_func,
+    reduce_func,
+    constraints,
+    chunksize,
+    map_kwargs,
+    reduce_kwargs,
+):
+    """map-reduce.
+    for testing.
+    """
+    chunksize = max(chunksize, constraints.sequential_threshold)
+    chunked_iterables = zip(
+        *(chunked_even(iterable, chunksize) for iterable in iterables)
+    )
+
+    results = [
+        seq.remote(
+            map_func,
+            *iterables,
+            **map_kwargs,
+        )
+        for iterables in chunked_iterables
+    ]
+    map_start = time.time()
+    map = ray.get(results)
+    print("map time = " + str(time.time() - map_start))
+
+    red_start = time.time()
+    ret = _reduce(map, reduce_func, reduce_kwargs, True)
+    print("reduce time = " + str(time.time() - red_start))
+    print("total time = " + str(time.time() - map_start))
+
+    return ret
