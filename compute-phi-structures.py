@@ -8,14 +8,7 @@ import ray
 import pyphi
 import numpy as np
 
-num_cpus = int(sys.argv[1])
-subsystem_size = int(sys.argv[2])
-
-ray.init(address=os.environ["ip_head"])
-
-print("Nodes in the Ray cluster:")
-print(ray.nodes())
-
+subsystem_size = int(sys.argv[1])
 
 # 5-node
 rand_5_lc = np.array([[0.34689379, 0.2957891 , 0.        , 0.        , 0.        ],

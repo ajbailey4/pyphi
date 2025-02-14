@@ -467,11 +467,13 @@ class MapReduce:
         """Perform the computation."""
         if self.done:
             return self.result
-        if self.parallel and self.tree.depth > 1:
+        if self.parallel:# and self.tree.depth > 1:
+            print("running " + str(self.map_func) + " in parallel (self.parallel = " + str(self.parallel) + ", self.tree.depth = " + str(self.tree.depth) + ")")
             start = time.time()
             ret = self._run_parallel()
-            print("calc time = " + str(time.time() - start))
+            print("total parallel runtime = " + str(time.time() - start))
             return ret
+        print("running " + str(self.map_func) + " sequentially (self.parallel = " + str(self.parallel) + ", self.total = " + str(self.total) + ")")
         return self._run_sequential()
 
 
