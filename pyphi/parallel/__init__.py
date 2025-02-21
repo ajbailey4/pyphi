@@ -343,7 +343,7 @@ class MapReduce:
             )
             # Get the tree specifications
             self.tree = self.constraints.simulate()
-            print(self.tree)
+            #print(self.tree)
             # Get the chunksize
             self.chunksize = self.constraints.get_initial_chunksize()
             # Default to cancelling all remote tasks
@@ -388,7 +388,7 @@ class MapReduce:
     def _run_parallel(self):
         """Perform the computation in parallel."""
         # Ensure ray is initialized with args from config
-        init_start = time.time()
+        #init_start = time.time()
         init()
         if self.progress:
             # Set up remote progress bar actor
@@ -398,9 +398,9 @@ class MapReduce:
             self.shortcircuit_callback = progress_hook(self.progress_bar)(
                 self.shortcircuit_callback
             )
-        print("init time = " + str(time.time() - init_start))
+        #print("init time = " + str(time.time() - init_start))
         try:
-            calc_start = time.time()
+            #calc_start = time.time()
             if True:
                 self.result = _map_reduce_tree(
                     self.iterables,
@@ -429,7 +429,7 @@ class MapReduce:
                     self.reduce_kwargs,
                 )
             self.done = True
-            print("calc time = " + str(time.time() - calc_start))
+            #print("calc time = " + str(time.time() - calc_start))
             return self.result
         except Exception as e:
             self.error = e
@@ -467,13 +467,13 @@ class MapReduce:
         """Perform the computation."""
         if self.done:
             return self.result
-        if self.parallel:# and self.tree.depth > 1:
+        if self.parallel and self.tree.depth > 1:
             print("running " + str(self.map_func) + " in parallel (self.parallel = " + str(self.parallel) + ", self.tree.depth = " + str(self.tree.depth) + ")")
             start = time.time()
             ret = self._run_parallel()
             print("total parallel runtime = " + str(time.time() - start))
             return ret
-        print("running " + str(self.map_func) + " sequentially (self.parallel = " + str(self.parallel) + ", self.total = " + str(self.total) + ")")
+        #print("running " + str(self.map_func) + " sequentially (self.parallel = " + str(self.parallel) + ", self.total = " + str(self.total) + ")")
         return self._run_sequential()
 
 
