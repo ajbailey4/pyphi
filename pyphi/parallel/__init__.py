@@ -255,8 +255,9 @@ def _map_reduce_tree(
     if progress_bar and _level > 1:
         # We're on a child node: update the progress bar.
         results = throttled_update(progress_bar, results)
+    red = time.time()
     ret = _reduce(results, reduce_func, reduce_kwargs, branch)
-    print("total_time = " + str(time.time() - get_start))
+    print("total_time = get: " + str(red - get_start) + " + reduce: " + str(time.time() - red))
     return ret
 
 
@@ -400,7 +401,7 @@ class MapReduce:
             )
         #print("init time = " + str(time.time() - init_start))
         try:
-            #calc_start = time.time()
+            calc_start = time.time()
             if True:
                 self.result = _map_reduce_tree(
                     self.iterables,
@@ -429,7 +430,7 @@ class MapReduce:
                     self.reduce_kwargs,
                 )
             self.done = True
-            #print("calc time = " + str(time.time() - calc_start))
+            print("calc time = " + str(time.time() - calc_start))
             return self.result
         except Exception as e:
             self.error = e

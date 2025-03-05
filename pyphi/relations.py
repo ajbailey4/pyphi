@@ -17,6 +17,7 @@ from .direction import Direction
 from .models import cmp, fmt
 from .registry import Registry
 from .warnings import PyPhiWarning
+import time
 
 
 class RelationFace(frozenset):
@@ -189,7 +190,7 @@ def all_relations(distinctions, min_degree=2, max_degree=None, **kwargs):
     """Yield causal relations among a set of distinctions."""
     distinctions = distinctions.unflatten()
     # Self relations
-    yield from _self_relations(distinctions)
+    relations = set(_self_relations(distinctions))
     # Non-self relations
     combinations = _combinations_with_nonempty_congruent_overlap(
         distinctions, min_degree=min_degree, max_degree=max_degree
@@ -197,16 +198,31 @@ def all_relations(distinctions, min_degree=2, max_degree=None, **kwargs):
 
     def worker(combination):
         return Relation((distinctions[i] for i in combination))
+    
+    def set_flatten(items, branch=False):
+        print("flattening set - branch=" + str(branch) + ", items=" + str(type(items)))
+        types = set()
+        for item in items:
+            types.add(type(item))
+        print(types)
+
+        if branch:
+            item_set = set()
+            item_set.union(items)
+            return item_set
+        return set(items)
 
     parallel_kwargs = conf.parallel_kwargs(
         config.PARALLEL_RELATION_EVALUATION, **kwargs
     )
-    yield from MapReduce(
+    relations.union(MapReduce(
         worker,
         combinations,
         desc="Evaluating relations",
+        reduce_func=set_flatten,
         **parallel_kwargs,
-    ).run()
+    ).run())
+    return relations
 
 
 def _self_relations(distinctions):
@@ -382,7 +398,20 @@ relation_computations = RelationComputationsRegistry()
 
 @relation_computations.register("CONCRETE")
 def concrete_relations(distinctions, **kwargs):
-    return ConcreteRelations(all_relations(distinctions, **kwargs))
+    start = time.time()
+    all_rel = all_relations(distinctions, **kwargs)
+    all_rel_set = frozenset(all_rel)
+    calc = time.time()
+
+    rel = ConcreteRelations(all_rel_set)
+    print(
+        "total rel time = ConcreteRelations ("
+        + str(time.time() - calc)
+        + ") + all_relations("
+        + str(calc - start)
+    )
+    return rel
+    # return ConcreteRelations(all_relations(distinctions, **kwargs))
 
 
 @relation_computations.register("ANALYTICAL")
