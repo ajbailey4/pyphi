@@ -1,7 +1,10 @@
 import os
+import socket
 import sys
 import time
 
+from collections import Counter
+import ray
 import pyphi
 import numpy as np
 
@@ -39,6 +42,7 @@ rand_7_lc = np.array([[0.32272698, 0.0966845 , 0.        , 0.        , 0.       
 network_7 = pyphi.network_generator.build_network(pyphi.network_generator.UNIT_FUNCTIONS["ising"], rand_7_lc)
 subsystem_7 = pyphi.Subsystem(network_7,(0,0,0,0,0,0,0))
 
+#pyphi.config.PARALLEL=False
 
 # compute
 start = time.time()
