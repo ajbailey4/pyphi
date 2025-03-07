@@ -198,7 +198,7 @@ def all_relations(distinctions, min_degree=2, max_degree=None, **kwargs):
 
     def worker(combination):
         return Relation((distinctions[i] for i in combination))
-    
+
     parallel_kwargs = conf.parallel_kwargs(
         config.PARALLEL_RELATION_EVALUATION, **kwargs
     )
