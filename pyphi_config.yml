@@ -111,7 +111,7 @@ REDIS_CONFIG:
   test_db: 1
 # Controls the definition of the upper bound of the sum of relation phi when
 # analyzing a system.
-RELATION_COMPUTATION: CONCRETE
+RELATION_COMPUTATION: ANALYTICAL
 # The measure to use when computing integration ("EMD", "KLD", "L1", ...)
 REPERTOIRE_DISTANCE: GENERALIZED_INTRINSIC_DIFFERENCE
 # The measure to use when computing intrinsic information and findind the
