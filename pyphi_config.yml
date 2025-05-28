@@ -58,9 +58,9 @@ PARALLEL_COMPLEX_EVALUATION:
   progress: true
 # Controls parallel evaluation of candidate mechanisms.
 PARALLEL_CONCEPT_EVALUATION:
-  chunksize: 256
-  parallel: false
-  sequential_threshold: 64
+  chunksize: 1
+  parallel: true
+  sequential_threshold: 1
   progress: true
 # Controls parallel evaluation of system partitions.
 PARALLEL_CUT_EVALUATION:
@@ -70,16 +70,16 @@ PARALLEL_CUT_EVALUATION:
   progress: false
 # Controls parallel evaluation of candidate purviews.
 PARALLEL_PURVIEW_EVALUATION:
-  chunksize: 256
-  parallel: false
-  sequential_threshold: 64
+  chunksize: 5
+  parallel: true
+  sequential_threshold: 5
   progress: true
 # Controls parallel evaluation of mechanism partitions.
 PARALLEL_MECHANISM_PARTITION_EVALUATION:
   chunksize: 4096
   parallel: false
-  sequential_threshold: 1024
-  progress: true
+  sequential_threshold: 4096
+  progress: false
 # Controls parallel evaluation of relations.
 # Only applies if RELATION_COMPUTATION = 'CONCRETE'.
 PARALLEL_RELATION_EVALUATION:

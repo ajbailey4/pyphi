@@ -134,7 +134,7 @@ def get_constraints(
     max_leaves: Optional[int] = None,
     branch_factor: int = 2,
 ) -> TreeConstraints:
-    cls = TreeConstraintsSize
+    cls = TreeConstraintsChunksize
     if total is None:
         if chunksize is None:
             # No chunksize and no total; cannot determine tree size
@@ -146,7 +146,6 @@ def get_constraints(
                 "if no total is given, only max_depth can be enforced; "
                 f"got max_size={max_size}, max_leaves={max_leaves}"
             )
-        cls = TreeConstraintsChunksize
     return cls(
         total=total,
         chunksize=chunksize,
