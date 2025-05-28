@@ -64,9 +64,9 @@ PARALLEL_CONCEPT_EVALUATION:
   progress: true
 # Controls parallel evaluation of system partitions.
 PARALLEL_CUT_EVALUATION:
-  chunksize: 4096
-  parallel: false
-  sequential_threshold: 1024
+  chunksize: 64
+  parallel: true
+  sequential_threshold: 64
   progress: false
 # Controls parallel evaluation of candidate purviews.
 PARALLEL_PURVIEW_EVALUATION:
