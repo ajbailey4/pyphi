@@ -32,10 +32,15 @@ class FrozenMap(typing.Mapping[K, V]):
 
     def __hash__(self) -> int:
         if self._hash is None:
-            self._hash = hash(
-                (frozenset(self._dict), frozenset(iter(self._dict.values())))
+            hashable_values = frozenset(
+                (k, tuple(v) if isinstance(v, list) else v)
+                for k, v in self._dict.items()
             )
+            self._hash = hash((frozenset(self._dict.keys()), hashable_values))
         return self._hash
+
+    def to_json(self):
+        return self._dict
 
     def replace(self, /, **changes):
         return self.__class__(self, **changes)
