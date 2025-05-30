@@ -39,12 +39,7 @@ class Network:
     """
 
     def __init__(
-            self,
-            tpm,
-            cm=None,
-            node_labels=None,
-            state_space=None,
-            purview_cache=None
+        self, tpm, cm=None, node_labels=None, state_space=None, purview_cache=None
     ):
         # Initialize _tpm according to argument type.
 
@@ -58,9 +53,7 @@ class Network:
             self._node_labels = NodeLabels(node_labels, self._node_indices)
 
             self._state_space, _ = build_state_space(
-                self._node_labels,
-                tpm.shape[:-1],
-                state_space
+                self._node_labels, tpm.shape[:-1], state_space
             )
 
             self._tpm = ImplicitTPM(
@@ -69,23 +62,21 @@ class Network:
                     self._cm,
                     self._state_space,
                     self._node_indices,
-                    self._node_labels
+                    self._node_labels,
                 )
             )
 
         elif isinstance(tpm, Iterable):
-            invalid = [
-                i for i in tpm if not isinstance(i, (np.ndarray, ExplicitTPM))
-            ]
+            invalid = [i for i in tpm if not isinstance(i, (np.ndarray, ExplicitTPM))]
 
             if invalid:
-                raise TypeError("Invalid set of nodes containing {}.".format(
-                    ', '.join(str(i) for i in invalid)
-                ))
+                raise TypeError(
+                    "Invalid set of nodes containing {}.".format(
+                        ", ".join(str(i) for i in invalid)
+                    )
+                )
 
-            tpm = tuple(
-                ExplicitTPM(node_tpm, validate=False) for node_tpm in tpm
-            )
+            tpm = tuple(ExplicitTPM(node_tpm, validate=False) for node_tpm in tpm)
 
             shapes = [node.shape for node in tpm]
 
@@ -96,9 +87,7 @@ class Network:
 
             network_tpm_shape = ImplicitTPM._node_shapes_to_shape(shapes)
             self._state_space, _ = build_state_space(
-                self._node_labels,
-                network_tpm_shape[:-1],
-                state_space
+                self._node_labels, network_tpm_shape[:-1], state_space
             )
 
             self._tpm = ImplicitTPM(
@@ -108,7 +97,7 @@ class Network:
                         self._cm,
                         self._state_space,
                         index,
-                        node_labels=self._node_labels
+                        node_labels=self._node_labels,
                     )
                     for index, node_tpm in zip(self._node_indices, tpm)
                 )
@@ -120,9 +109,7 @@ class Network:
             self._node_indices = tuple(range(self.size))
             self._node_labels = NodeLabels(node_labels, self._node_indices)
             self._state_space, _ = build_state_space(
-                self._node_labels,
-                self._tpm.shape[:-1],
-                state_space
+                self._node_labels, self._tpm.shape[:-1], state_space
             )
 
         # FIXME(TPM) initialization from JSON
@@ -213,16 +200,13 @@ class Network:
 
     @property
     def state_space(self):
-        """tuple[tuple[Union[int, str]]]: Labels for the state space of each node.
-        """
+        """tuple[tuple[Union[int, str]]]: Labels for the state space of each node."""
         return self._state_space
 
     @property
     def num_states(self):
         """int: The number of possible states of the network."""
-        return np.prod(
-            [len(node_states) for node_states in self._state_space]
-        )
+        return np.prod([len(node_states) for node_states in self._state_space])
 
     @property
     def node_indices(self):

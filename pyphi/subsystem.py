@@ -89,7 +89,6 @@ class Subsystem:
 
         # The state of the network.
         self.state = tuple(state)
-        validate.node_states(self.state)
 
         # Get the external node indices.
         # TODO: don't expose this as an attribute?
@@ -105,13 +104,6 @@ class Subsystem:
         background_conditions = dict(zip(self.external_indices, external_state))
         self.cause_tpm = self.network.tpm.backward_tpm(state, self.node_indices)
         self.effect_tpm = self.network.tpm.condition_tpm(background_conditions)
-
-        if config.VALIDATE_SUBSYSTEM_STATES:
-            validate.state_reachable(self)
-
-        self.cause_tpm = _backward_tpm(
-            self.network.tpm, state, self.node_indices
-        )
 
         # The TPMs for just the nodes in the subsystem.
         self.proper_effect_tpm = self.effect_tpm.squeeze()
