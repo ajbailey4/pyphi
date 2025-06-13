@@ -64,7 +64,7 @@ def ces(
     """
     total = None
     if mechanisms is None:
-        mechanisms = utils.powerset(subsystem.node_indices, nonempty=True, reverse=True)
+        mechanisms = reversed(list(utils.powerset(subsystem.node_indices, nonempty=True)))
         total = 2 ** len(subsystem.node_indices) - 1
     else:
         try:
