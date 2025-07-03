@@ -249,8 +249,8 @@ class Node:
         """
         return (
             self.index == other.index and
-            self.cause_tpm.array_equal(other.tpm) and
-            self.effect_tpm.array_equal(other.tpm) and
+            self.cause_tpm.array_equal(other.cause_tpm) and
+            self.effect_tpm.array_equal(other.effect_tpm) and
             self.inputs == other.inputs and
             self.outputs == other.outputs and
             self.state_space == other.state_space and
