@@ -145,7 +145,6 @@ def backpressure(func, *argslist, inflight_limit=1000, **kwargs):
         if len(result_refs) > inflight_limit:
             num_ready = i - inflight_limit
             ray.wait(result_refs, num_returns=num_ready)
-            print("waiting...")
         result_refs.append(func.remote(*args, **kwargs))
     return result_refs
 
