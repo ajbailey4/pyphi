@@ -22,6 +22,8 @@ from ..relations import relations as compute_relations
 from ..subsystem import Subsystem
 from ..warnings import warn_about_tie_serialization
 
+import time
+
 
 ##############################################################################
 # Information
@@ -530,18 +532,28 @@ def phi_structure(
     relations_kwargs = relations_kwargs or dict()
 
     # Analyze irreducibility if not provided
+    sia_time_start = time.time()
     if sia is None:
         sia = _sia(subsystem, **sia_kwargs)
+    sia_time_end = time.time()
 
     # Compute distinctions if not provided
+    dist_time_start = time.time()
     if distinctions is None:
         distinctions = compute.ces(subsystem, **ces_kwargs)
     # Filter out incongruent distinctions
     distinctions = distinctions.resolve_congruence(sia.system_state)
+    dist_time_end = time.time()
 
     # Compute relations if not provided
+    rel_time_start = time.time()
     if relations is None:
         relations = compute_relations(distinctions, **relations_kwargs)
+    rel_time_end = time.time()
+
+    print("sia time: " + str(sia_time_end - sia_time_start) + " secs")
+    print("distinctions time: " + str(dist_time_end - dist_time_start) + " secs")
+    print("relations time: " + str(rel_time_end - rel_time_start) + " secs")
 
     return PhiStructure(
         sia=sia,

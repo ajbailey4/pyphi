@@ -8,6 +8,8 @@ from itertools import cycle
 from textwrap import indent
 from typing import Any, Callable, Iterable, List, Optional, TYPE_CHECKING
 
+import time
+
 if TYPE_CHECKING:
     from ray import ObjectRef
 
@@ -188,6 +190,19 @@ def _map_reduce_tree(
     """
     total = fallback(try_len(*iterables), float("inf"))
     branch = _level < tree.depth and constraints.sequential_threshold < total
+    print(
+        "total = "
+        + str(total)
+        + ", seq. thres. = "
+        + str(constraints.sequential_threshold)
+        + ", _level = "
+        + str(_level)
+        + ", tree.depth = "
+        + str(tree.depth)
+        + ", branch = "
+        + str(branch)
+    )
+
     if branch:
         chunksize = max(chunksize, constraints.sequential_threshold)
         chunked_iterables = zip(
@@ -227,6 +242,7 @@ def _map_reduce_tree(
         wait_then_finish.remote(progress_bar, results)
         progress_bar.print_until_done()
     # Get (potentially remote) results.
+    get_start = time.time()
     results = get(
         results,
         remote=branch,
@@ -238,7 +254,15 @@ def _map_reduce_tree(
     if progress_bar and _level > 1:
         # We're on a child node: update the progress bar.
         results = throttled_update(progress_bar, results)
-    return _reduce(results, reduce_func, reduce_kwargs, branch)
+    red = time.time()
+    ret = _reduce(results, reduce_func, reduce_kwargs, branch)
+    print(
+        "total_time = get: "
+        + str(red - get_start)
+        + " + reduce: "
+        + str(time.time() - red)
+    )
+    return ret
 
 
 _remote_map_reduce_tree = ray.remote(_map_reduce_tree)
@@ -368,6 +392,7 @@ class MapReduce:
     def _run_parallel(self):
         """Perform the computation in parallel."""
         # Ensure ray is initialized with args from config
+        # init_start = time.time()
         init()
         if self.progress:
             # Set up remote progress bar actor
@@ -377,7 +402,9 @@ class MapReduce:
             self.shortcircuit_callback = progress_hook(self.progress_bar)(
                 self.shortcircuit_callback
             )
+        # print("init time = " + str(time.time() - init_start))
         try:
+            calc_start = time.time()
             self.result = _map_reduce_tree(
                 self.iterables,
                 self.map_func,
@@ -395,6 +422,7 @@ class MapReduce:
                 self.progress_bar,
             )
             self.done = True
+            print("calc time = " + str(time.time() - calc_start))
             return self.result
         except Exception as e:
             self.error = e
@@ -433,5 +461,18 @@ class MapReduce:
         if self.done:
             return self.result
         if self.parallel and self.tree.depth > 1:
-            return self._run_parallel()
+            print(
+                "running "
+                + str(self.map_func)
+                + " in parallel (self.parallel = "
+                + str(self.parallel)
+                + ", self.tree.depth = "
+                + str(self.tree.depth)
+                + ")"
+            )
+            start = time.time()
+            ret = self._run_parallel()
+            print("total parallel runtime = " + str(time.time() - start))
+            return ret
+        # print("running " + str(self.map_func) + " sequentially (self.parallel = " + str(self.parallel) + ", self.total = " + str(self.total) + ")")
         return self._run_sequential()
