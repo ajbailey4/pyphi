@@ -49,7 +49,7 @@ NUMBER_OF_CORES: -1
 # IMPORTANT:
 #   Parallelization requires extra dependencies, which must be
 #   installed with `pyphi[parallel]`.
-PARALLEL: false
+PARALLEL: true
 # Controls parallel evaluation of candidate systems within a network.
 PARALLEL_COMPLEX_EVALUATION:
   chunksize: 64
@@ -70,9 +70,9 @@ PARALLEL_CUT_EVALUATION:
   progress: false
 # Controls parallel evaluation of candidate purviews.
 PARALLEL_PURVIEW_EVALUATION:
-  chunksize: 5
+  chunksize: 6
   parallel: true
-  sequential_threshold: 5
+  sequential_threshold: 6
   progress: true
 # Controls parallel evaluation of mechanism partitions.
 PARALLEL_MECHANISM_PARTITION_EVALUATION:

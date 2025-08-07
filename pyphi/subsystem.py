@@ -27,11 +27,10 @@ from .models import (
     _null_ria,
     CauseEffectStructure,
 )
+from .node import generate_node
 from .models.mechanism import ShortCircuitConditions, StateSpecification
 from .network import irreducible_purviews
-from .node import generate_nodes
 from .partition import mip_partitions
-from .tpm import backward_tpm as _backward_tpm
 from .utils import state_of
 
 log = logging.getLogger(__name__)
@@ -79,7 +78,6 @@ class Subsystem:
     ):
         # The network this subsystem belongs to.
         validate.is_network(network)
-        network._tpm = network.tpm
         self.network = network
 
         self.node_labels = network.node_labels
@@ -87,11 +85,10 @@ class Subsystem:
         # (for JSON serialization).
         self.node_indices = self.node_labels.coerce_to_indices(nodes)
 
-        validate.state_length(state, self.network.size)
+        validate.state(state, self.network.size, self.network.tpm.shape[:-1])
 
         # The state of the network.
         self.state = tuple(state)
-        validate.node_states(self.state)
 
         # Get the external node indices.
         # TODO: don't expose this as an attribute?
@@ -105,18 +102,12 @@ class Subsystem:
         # Get the TPMs conditioned on the state of the external nodes.
         external_state = utils.state_of(self.external_indices, self.state)
         background_conditions = dict(zip(self.external_indices, external_state))
+        self.cause_tpm = self.network.tpm.backward_tpm(state, self.node_indices)
         self.effect_tpm = self.network.tpm.condition_tpm(background_conditions)
 
-        if config.VALIDATE_SUBSYSTEM_STATES:
-            validate.state_reachable(self)
-
-        self.cause_tpm = _backward_tpm(
-            self.network.tpm, state, self.node_indices
-        )
-
         # The TPMs for just the nodes in the subsystem.
-        self.proper_effect_tpm = self.effect_tpm.squeeze()[..., list(self.node_indices)]
-        self.proper_cause_tpm = self.cause_tpm.squeeze()[..., list(self.node_indices)]
+        self.proper_effect_tpm = self.effect_tpm.squeeze()
+        self.proper_cause_tpm = self.cause_tpm.squeeze()
 
         # The unidirectional cut applied for phi evaluation
         self.cut = (
@@ -141,13 +132,26 @@ class Subsystem:
             unconstrained_forward_repertoire_cache or cache.DictCache()
         )
 
-        self.nodes = generate_nodes(
-            self.cause_tpm,
-            self.effect_tpm,
-            self.cm,
-            self.state,
-            self.node_indices,
-            self.node_labels,
+        # Set the state of the |Node|s.
+        nodes_zip = zip(self.effect_tpm.nodes, self.cause_tpm.nodes, self.state)
+        for effect_node, cause_node, node_state in nodes_zip:
+            effect_node.state = node_state
+            cause_node.state = node_state
+
+        # Generate |Node|s for this subsystem and this particular cut to the cm.
+        nodes_enumerate = enumerate(zip(self.cause_tpm.nodes, self.effect_tpm.nodes))
+        self.nodes = tuple(
+            generate_node(
+                node[Direction.EFFECT].effect_tpm,
+                self.cm,
+                self.network.state_space,
+                i,
+                self.node_labels,
+                cause_tpm=node[Direction.CAUSE].effect_tpm,
+                state=node[Direction.EFFECT].state,
+            )
+            for i, node in nodes_enumerate
+            if i in self.node_indices
         )
 
     @property
@@ -220,6 +224,10 @@ class Subsystem:
         if self.cause_tpm.shape[-1] != self.effect_tpm.shape[-1]:
             raise ValueError("cause and effect TPM sizes should be the same")
         return self.effect_tpm.shape[-1]
+
+    @property
+    def state_space(self):
+        return self.network.state_space
 
     def cache_info(self):
         """Report repertoire cache statistics."""
@@ -1094,7 +1102,8 @@ class Subsystem:
         Returns:
             MaximallyIrreducibleCauseOrEffect: The |MIC| or |MIE|.
         """
-        purviews = self.potential_purviews(direction, mechanism, purviews)
+        if purviews is None:
+            purviews = self.potential_purviews(direction, mechanism, purviews)
 
         if direction == Direction.CAUSE:
             mice_class = MaximallyIrreducibleCause
