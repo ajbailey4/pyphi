@@ -59,6 +59,7 @@ def _loadable_models():
     """
     classes = [
         pyphi.data_structures.PyPhiFloat,
+        pyphi.data_structures.FrozenMap,
         pyphi.Direction,
         pyphi.labels.NodeLabels,
         pyphi.models.Account,
@@ -86,6 +87,7 @@ def _loadable_models():
         pyphi.models.SystemIrreducibilityAnalysis,
         pyphi.models.Tripartition,
         pyphi.Network,
+        pyphi.node.Node,
         pyphi.new_big_phi.PhiStructure,
         pyphi.new_big_phi.SystemIrreducibilityAnalysis,
         pyphi.relations.AnalyticalRelations,

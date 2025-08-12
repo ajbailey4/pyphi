@@ -93,7 +93,7 @@ class Node:
                 self._inputs,
                 self._outputs,
                 self.state_space,
-                self.state
+                self.state,
             )
         )
 
@@ -152,9 +152,7 @@ class Node:
             )
 
         if len(_state_space) < 2:
-            raise ValueError(
-                "Invalid node state space with less than 2 states."
-            )
+            raise ValueError("Invalid node state space with less than 2 states.")
 
         self._state_space = _state_space
 
@@ -185,21 +183,22 @@ class Node:
 
         if isinstance(index, dict):
             singleton_coordinate = (
-                [SINGLETON_COORDINATE] if preserve_singletons
-                else SINGLETON_COORDINATE
+                [SINGLETON_COORDINATE] if preserve_singletons else SINGLETON_COORDINATE
             )
 
             try:
                 # Convert potential int dimension indices to common currency of
                 # string dimension labels.
                 keys = [
-                    k if isinstance(k, str) else dimensions[k]
-                    for k in index.keys()
+                    k if isinstance(k, str) else dimensions[k] for k in index.keys()
                 ]
 
                 projected_index = {
-                    key: value if support[key] != (SINGLETON_COORDINATE,)
-                    else singleton_coordinate
+                    key: (
+                        value
+                        if support[key] != (SINGLETON_COORDINATE,)
+                        else singleton_coordinate
+                    )
                     for key, value in zip(keys, index.values())
                 }
 
@@ -221,8 +220,7 @@ class Node:
         index_support_map = zip(index, support.values())
         singleton_coordinate = [0] if preserve_singletons else 0
         projected_index = tuple(
-            i if support != (SINGLETON_COORDINATE,)
-            else singleton_coordinate
+            i if support != (SINGLETON_COORDINATE,) else singleton_coordinate
             for i, support in index_support_map
         )
 
@@ -247,14 +245,24 @@ class Node:
         Labels are for display only, so two equal nodes may have different
         labels.
         """
+        if not isinstance(other, Node):
+            return False
+
+        def _tpm_equal(a, b):
+            if a is None and b is None:
+                return True
+            if (a is None) != (b is None):
+                return False
+            return a.array_equal(b)
+
         return (
-            self.index == other.index and
-            self.cause_tpm.array_equal(other.cause_tpm) and
-            self.effect_tpm.array_equal(other.effect_tpm) and
-            self.inputs == other.inputs and
-            self.outputs == other.outputs and
-            self.state_space == other.state_space and
-            self.state == other.state
+            self.index == other.index
+            and _tpm_equal(self.cause_tpm, other.cause_tpm)
+            and self.effect_tpm.array_equal(other.effect_tpm)
+            and self.inputs == other.inputs
+            and self.outputs == other.outputs
+            and self.state_space == other.state_space
+            and self.state == other.state
         )
 
     def __ne__(self, other):
@@ -266,20 +274,49 @@ class Node:
     def __hash__(self):
         return self._hash
 
-    # TODO do we need more than the index?
     def to_json(self):
         """Return a JSON-serializable representation."""
-        return self.index
+        dict = {"effect_dataarray": self.effect_dataarray.to_dict()}
+        if self.cause_dataarray is not None:
+            dict["cause_dataarray"] = self.cause_dataarray.to_dict()
+
+        return dict
+
+    @classmethod
+    def from_json(cls, json_dict):
+        """Return a |Node| object from a JSON dictionary representation."""
+
+        # Helper to convert dict to xarray.DataArray with proper TPM and coord formatting
+        def dict_to_dataarray(d):
+            d["data"] = pyphi.tpm.ExplicitTPM(d["data"])
+
+            for _, coord in d.get("coords", {}).items():
+                coord["data"] = list(coord["data"])
+
+            attrs = d.get("attrs", {})
+            attrs["inputs"] = frozenset(attrs["inputs"])
+            attrs["outputs"] = frozenset(attrs["outputs"])
+            attrs["cm"] = np.array(attrs["cm"])
+
+            return xr.DataArray.from_dict(d)
+
+        effect_dataarray = dict_to_dataarray(json_dict["effect_dataarray"])
+
+        cause_dataarray = None
+        if "cause_dataarray" in json_dict:
+            cause_dataarray = dict_to_dataarray(json_dict["cause_dataarray"])
+
+        return cls(effect_dataarray=effect_dataarray, cause_dataarray=cause_dataarray)
 
 
 def generate_node(
-        effect_tpm: pyphi.tpm.ExplicitTPM,
-        cm: np.ndarray,
-        network_state_space: Mapping[str, Tuple[Union[int, str]]],
-        index: int,
-        node_labels: Iterable[str],
-        cause_tpm: Optional[pyphi.tpm.ExplicitTPM] = None,
-        state: Optional[Union[int, str]] = None,
+    effect_tpm: pyphi.tpm.ExplicitTPM,
+    cm: np.ndarray,
+    network_state_space: Mapping[str, Tuple[Union[int, str]]],
+    index: int,
+    node_labels: Iterable[str],
+    cause_tpm: Optional[pyphi.tpm.ExplicitTPM] = None,
+    state: Optional[Union[int, str]] = None,
 ) -> xr.DataArray:
     """
     Instantiate a node TPM DataArray.
@@ -330,22 +367,26 @@ def generate_node(
 
     coordinates = {**input_coordinates, dimensions[-1]: node_state_space}
 
-    cause_dataarray = xr.DataArray(
-        name=node_labels[index],
-        data=cause_tpm,
-        dims=dimensions,
-        coords=coordinates,
-        attrs={
-            "index": index,
-            "node_labels": node_labels,
-            "cm": cm,
-            "inputs": inputs,
-            "outputs": outputs,
-            "state_space": tuple(node_state_space),
-            "state": state,
-            "network_state_space": network_state_space
-        }
-    ) if cause_tpm is not None else None
+    cause_dataarray = (
+        xr.DataArray(
+            name=node_labels[index],
+            data=cause_tpm,
+            dims=dimensions,
+            coords=coordinates,
+            attrs={
+                "index": index,
+                "node_labels": node_labels,
+                "cm": cm,
+                "inputs": inputs,
+                "outputs": outputs,
+                "state_space": tuple(node_state_space),
+                "state": state,
+                "network_state_space": network_state_space,
+            },
+        )
+        if cause_tpm is not None
+        else None
+    )
 
     effect_dataarray = xr.DataArray(
         name=node_labels[index],
@@ -360,20 +401,20 @@ def generate_node(
             "outputs": outputs,
             "state_space": tuple(node_state_space),
             "state": state,
-            "network_state_space": network_state_space
-        }
+            "network_state_space": network_state_space,
+        },
     )
 
     return Node(effect_dataarray, cause_dataarray)
 
 
 def generate_nodes(
-        network_tpm,
-        cm: np.ndarray,
-        state_space: Mapping[str, Tuple[Union[int, str]]],
-        indices: Tuple[int],
-        node_labels: Tuple[str],
-        network_state: Optional[Tuple[Union[int, str]]] = None,
+    network_tpm,
+    cm: np.ndarray,
+    state_space: Mapping[str, Tuple[Union[int, str]]],
+    indices: Tuple[int],
+    node_labels: Tuple[str],
+    network_state: Optional[Tuple[Union[int, str]]] = None,
 ) -> Tuple[xr.DataArray]:
     """Generate |Node| objects out of a binary network |TPM|.
 

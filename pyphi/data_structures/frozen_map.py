@@ -42,5 +42,10 @@ class FrozenMap(typing.Mapping[K, V]):
     def to_json(self):
         return self._dict
 
+    @classmethod
+    def from_json(cls, json_dict):
+        """Return a |FrozenMap| object from a JSON dictionary representation."""
+        return cls(**{node: list(states) for node, states in json_dict.items()})
+
     def replace(self, /, **changes):
         return self.__class__(self, **changes)
