@@ -39,7 +39,12 @@ class Network:
     """
 
     def __init__(
-        self, tpm, cm=None, node_labels=None, state_space=None, purview_cache=None
+        self,
+        tpm,
+        cm=None,
+        node_labels=None,
+        state_space=None,
+        purview_cache=None,
     ):
         # Initialize _tpm according to argument type.
 
@@ -64,6 +69,18 @@ class Network:
                     self._node_indices,
                     self._node_labels,
                 )
+            )
+
+        # FIXME(TPM) initialization from JSON
+        elif isinstance(tpm, dict):
+            # From JSON.
+            self._tpm = ImplicitTPM(tpm["_nodes"])
+            self._cm, self._cm_hash = self._build_cm(cm, tpm)
+            self._node_indices = tuple(range(self.size))
+            self._node_labels = NodeLabels(node_labels, self._node_indices)
+
+            self._state_space, _ = build_state_space(
+                self._node_labels, self._tpm.shape[:-1], state_space
             )
 
         elif isinstance(tpm, Iterable):
@@ -111,14 +128,6 @@ class Network:
             self._state_space, _ = build_state_space(
                 self._node_labels, self._tpm.shape[:-1], state_space
             )
-
-        # FIXME(TPM) initialization from JSON
-        elif isinstance(tpm, dict):
-            # From JSON.
-            self._tpm = ImplicitTPM(tpm["_tpm"])
-            self._cm, self._cm_hash = self._build_cm(cm, tpm)
-            self._node_indices = tuple(range(self.size))
-            self._node_labels = NodeLabels(node_labels, self._node_indices)
 
         else:
             raise TypeError(f"Invalid TPM of type {type(tpm)}.")
@@ -200,13 +209,18 @@ class Network:
 
     @property
     def state_space(self):
-        """tuple[tuple[Union[int, str]]]: Labels for the state space of each node."""
+        """FrozenMap[str, Tuple[Union[int, str]]]: A mapping from nodes to node states."""
         return self._state_space
+
+    @property
+    def state_space_labels(self):
+        """tuple[tuple[Union[int, str]]]: Labels for the state space of each node."""
+        return tuple(tuple(self.state_space[node]) for node in self.node_labels)
 
     @property
     def num_states(self):
         """int: The number of possible states of the network."""
-        return np.prod([len(node_states) for node_states in self._state_space])
+        return np.prod([len(node_states) for node_states in self.state_space_labels])
 
     @property
     def node_indices(self):
@@ -275,7 +289,7 @@ class Network:
             "cm": self.cm,
             "size": self.size,
             "node_labels": self.node_labels,
-            "state_space": self.state_space,
+            "state_space": self.state_space_labels,
         }
 
     @classmethod
