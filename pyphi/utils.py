@@ -84,8 +84,7 @@ def equivalent_states(state, mask, state_space_shape):
         raise ValueError(f"Expected mask and state_space_shape of size {n}.")
 
     indices_needing_expansion = {
-        i: state_space_shape[i] for i, mask in enumerate(mask)
-        if mask == 1
+        i: state_space_shape[i] for i, mask in enumerate(mask) if mask == 1
     }
     locally_expanded_states = product(
         *[range(states) for i, states in indices_needing_expansion.items()]
@@ -387,35 +386,39 @@ NO_DEFAULT = object()
 
 # TODO test
 @curry
-def all_extrema(comparison, seq, default=NO_DEFAULT):
+def all_extrema(comparison, seq, get_key=lambda x: x, default=NO_DEFAULT):
     """Return the extrema of ``seq``.
 
     Use ``<`` as the comparison to obtain the minima; use ``>`` as the
     comparison to obtain the maxima.
 
-    Uses only one pass through ``seq``.
+    Uses a single pass through ``seq`` and constant memory.
 
     Args:
         comparison (callable): A comparison operator.
         seq (iterator): An iterator over a sequence.
+        get_key (callable): Function mapping elements to comparable values (keys).
+        default: Optional default value if `seq` is empty.
 
     Returns:
         list: The maxima/minima in ``seq``.
     """
-    extrema = []
     sentinel = object()
-    current_extremum = next(seq, sentinel)
-    if current_extremum is sentinel:
+    first = next(seq, sentinel)
+    if first is sentinel:
         if default is NO_DEFAULT:
             raise ValueError("Cannot find extrema of empty sequence without default")
-        else:
-            return [default]
-    extrema.append(current_extremum)
+        return [default]
+
+    best_key = get_key(first)
+    extrema = [first]
+
     for element in seq:
-        if comparison(element, current_extremum):
+        key = get_key(element)
+        if comparison(key, best_key):
             extrema = [element]
-            current_extremum = element
-        elif element == current_extremum:
+            best_key = key
+        elif key == best_key:
             extrema.append(element)
     return extrema
 
