@@ -821,23 +821,25 @@ class Subsystem:
                 **kwargs,
             )
 
-        candidate_mip_ties = tuple(MapReduce(
-            _evaluate_partition,
-            partitions,
-            reduce_func=resolve_ties.partitions,
-            reduce_kwargs=dict(
-                default=_null_ria(
-                    direction,
-                    mechanism,
-                    purview,
-                    phi=0,
-                    specified_state=specified_state,
-                )
-            ),
-            shortcircuit_func=utils.is_falsy,
-            desc="Evaluating mechanism partitions",
-            **parallel_kwargs,
-        ).run())
+        candidate_mip_ties = tuple(
+            MapReduce(
+                _evaluate_partition,
+                partitions,
+                reduce_func=resolve_ties.partitions,
+                reduce_kwargs=dict(
+                    default=_null_ria(
+                        direction,
+                        mechanism,
+                        purview,
+                        phi=0,
+                        specified_state=specified_state,
+                    )
+                ),
+                shortcircuit_func=utils.is_falsy,
+                desc="Evaluating mechanism partitions",
+                **parallel_kwargs,
+            ).run()
+        )
 
         for tie in candidate_mip_ties:
             # TODO(ties) do this assignment in resolve_ties
@@ -896,21 +898,23 @@ class Subsystem:
             else:
                 specified_states = [state]
 
-            mip_ties = tuple(MapReduce(
-                self._find_mip_single_state,
-                specified_states,
-                reduce_func=resolve_ties.states,
-                map_kwargs=dict(
-                    direction=direction,
-                    mechanism=mechanism,
-                    purview=purview,
-                    repertoire=repertoire,
-                    partitions=partitions,
-                    parallel_kwargs=parallel_kwargs,
-                ),
-                desc="Finding MIP for maximum intrinsic information states",
-                **parallel_kwargs,
-            ).run())
+            mip_ties = tuple(
+                MapReduce(
+                    self._find_mip_single_state,
+                    specified_states,
+                    reduce_func=resolve_ties.states,
+                    map_kwargs=dict(
+                        direction=direction,
+                        mechanism=mechanism,
+                        purview=purview,
+                        repertoire=repertoire,
+                        partitions=partitions,
+                        parallel_kwargs=parallel_kwargs,
+                    ),
+                    desc="Finding MIP for maximum intrinsic information states",
+                    **parallel_kwargs,
+                ).run()
+            )
         elif config.IIT_VERSION == 3:
             if state is not None:
                 raise ValueError("passing `state` is not supported with IIT 3.0")
@@ -1129,15 +1133,17 @@ class Subsystem:
         parallel_kwargs = conf.parallel_kwargs(
             config.PARALLEL_PURVIEW_EVALUATION, **kwargs
         )
-        ties = tuple(MapReduce(
-            _find_mip,
-            purviews,
-            reduce_func=resolve_ties.purviews,
-            reduce_kwargs=dict(default=no_purviews),
-            total=len(purviews),
-            desc="Evaluating purviews",
-            **parallel_kwargs,
-        ).run())
+        ties = tuple(
+            MapReduce(
+                _find_mip,
+                purviews,
+                reduce_func=resolve_ties.purviews,
+                reduce_kwargs=dict(default=no_purviews),
+                total=len(purviews),
+                desc="Evaluating purviews",
+                **parallel_kwargs,
+            ).run()
+        )
         # all_mice = map(mice_class, map_reduce.run())
         # TODO(ties) refactor this into `resolve_ties.purviews`?
         for tie in ties:

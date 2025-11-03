@@ -470,9 +470,6 @@ class MapReduce:
                 + str(self.tree.depth)
                 + ")"
             )
-            start = time.time()
-            ret = self._run_parallel()
-            print("total parallel runtime = " + str(time.time() - start))
-            return ret
+            return self._run_parallel()
         # print("running " + str(self.map_func) + " sequentially (self.parallel = " + str(self.parallel) + ", self.total = " + str(self.total) + ")")
         return self._run_sequential()
